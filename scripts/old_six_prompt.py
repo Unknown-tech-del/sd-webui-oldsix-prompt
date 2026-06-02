@@ -1,4 +1,4 @@
-﻿'''
+'''
 Author: Six_God_K
 Date: 2024-03-24 15:56:01
 LastEditors: Six_God_K
@@ -45,11 +45,13 @@ def LoadTagsFile():
       return  obj                   
  
 def loadjsonfiles(path,dic):
+    if not os.path.exists(path):
+        return
     files = os.listdir( path ) 
     for item in files:
         if item.endswith(".json"):
                 filepath=path+'/'+item
-                filename=filepath[filepath.rindex('/') + 1:-5]
+                filename=os.path.splitext(item)[0]
                 with open(filepath, "r",encoding="utf-8-sig") as f:
                         res=json.loads(f.read())                       
                         dic[filename]=res
@@ -61,15 +63,25 @@ def contains_chinese(s):
 
 
 def translate(text):
-     if(transObj['server']=='free'):
-         trans_server=freebd.FreeBDTranslator()
-         return Translator.translate_text(trans_server,text)
-     elif(transObj['server']=='llm'):
-         trans_server=llmTranslate.LLMTranslator()
-         return Translator.translate_text(trans_server,text,transObj)
-     elif(transObj['server']=='baidu'):
-         trans_server=baidu.BaiduTranslator()
-         return Translator.translate_text(trans_server, transObj['appid'],transObj['secret'],text)
+     try:
+         if not transObj or not isinstance(transObj, dict):
+             return text
+         server = transObj.get('server')
+         if server == 'free':
+             trans_server = freebd.FreeBDTranslator()
+             return Translator.translate_text(trans_server, text) or text
+         elif server == 'llm':
+             trans_server = llmTranslate.LLMTranslator()
+             return Translator.translate_text(trans_server, text, transObj) or text
+         elif server == 'baidu':
+             trans_server = baidu.BaiduTranslator()
+             appid = transObj.get('appid')
+             secret = transObj.get('secret')
+             if appid and secret:
+                 return Translator.translate_text(trans_server, appid, secret, text) or text
+     except Exception as e:
+         print(f"[OldSix Prompt] Translation error: {e}")
+     return text
 
 
 
@@ -114,9 +126,9 @@ class Script(scripts.Script):
            
             # if(transMode==False):
             if(contains_chinese(p.prompt)==True):      
-                      p.prompt=translate(p.prompt)
+                      p.prompt=translate(p.prompt) or ''
             if(contains_chinese(p.negative_prompt)==True):    
-                      p.negative_prompt=translate(p.negative_prompt)|''
+                      p.negative_prompt=translate(p.negative_prompt) or ''
             p.prompt=add_lora(prompt_lora_arr,p.prompt)
             p.negative_prompt=add_lora(nprompt_lora_arr,p.negative_prompt)
                    
